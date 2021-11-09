@@ -1,0 +1,425 @@
+---
+title: "Praca domowa 1"
+author: "Jakub Zbrzezny"
+date: "6 listopada 2019"
+output: html_document
+---
+
+
+source("Kuboz46_Zbrzezny_Jakub_286689_pd1.R")
+
+# Zadanie 1
+Dana funkcja przyjmuje macierz A wymiaru n x m. Oblicza macierz korelacji rozmiaru m x m tak¹, ¿e na i-tym wierszu i j-tej kolumnie znajduje siê liniowy wspó³czynnik korelacji Pearsona pomiêdzy i-t¹ kolumn¹ i j-t¹ kolumn¹ macierz A.
+
+Funkcja korzysta z funkcji apply, colMeans.
+Wynikiem funkcji jest macierz B * C, gdzie B, C s¹ macierzami pomocniczymi zdefiniowanymi nastêpuj¹co:
+
+Na i-tym wierszu i j-tej kolumnie macierzy B jest ró¿nica elementu macierzy A na j-tym wierszu i i-tej kolumnie, podzielona przez pierwiastek z sumy po wszystkich wierszach k z kwadratu ró¿nicy elementu macierzy A na k-tym wierszu i i-tej kolumnie i œredniej z elementów znajduj¹cych siê na i-tej kolumnie macierzy A.
+
+Natomiast na i-tym wierszu i j-tej kolumnie macierzy D wartoœæ jest analogiczna jak w przypadku macierzy B. Jedyna ró¿nica jest taka, ¿e w indeksach macierzy A zamieniamy i z j.
+
+Z definicji mno¿enia macierzy widaæ, ¿e w macierzy wynikowej postaæ elementu jest zgodna z definicj¹ liniowego wspó³czynnika korelacji Pearsona.
+
+Dzia³anie tej funkcji sprawdzê na paru przyk³adach:
+
+## Przyk³ad 1
+```{r echo = FALSE}
+macierz_korelacji <- function(M)
+{
+  stopifnot(is.matrix(M) & is.numeric(M))
+  n <- nrow(M)
+  m <- ncol(M)
+  b1 <- t(M - t(matrix(colMeans(M),m,n)))
+  x <- sqrt(apply((t(M - t(matrix(colMeans(M),m,n))))^2, MARGIN = 1, sum))
+  vb <- matrix(x,m,n)
+  B <- b1 / vb
+  c1 <- M - t(matrix(colMeans(M),m,n))
+  vc <- t(matrix(x,m,n))
+  C <- c1 / vc
+  B %*% C
+}
+```
+Dla macierzy A wymiaru 3 x 3:
+```{r}
+A <- matrix(c(16, 23, 3, 32, 46, 6, 4, 22, 16), nrow = 3)
+A
+```
+Wynik mamy nastêpuj¹cy:
+```{r}
+macierz_korelacji(A)
+```
+Widaæ, ¿e wyniki wygl¹daj¹ prawid³owo, gdy¿ ³atwo zauwa¿yæ, ¿e zale¿noœæ miêdzy drug¹, a pierwsz¹ kolumn¹ jest liniowa, ale miêdzy drug¹, a trzeci¹ ju¿ nie.
+Porównamy teraz nasz¹ funkcjê z wbudowan¹ funkcj¹ cor:
+```{r}
+all.equal(cor(A,A), macierz_korelacji(A))
+```
+Wynikiem jest TRUE, wiêc w tym przypadku funkcja dzia³a poprawnie.
+
+## Przyk³ad 2
+Teraz weŸmiemy macierz wymiaru 5 x 3.
+```{r}
+A <- matrix(c(16, 23, 3, 32, 46, 6, 4, 22, 16, 35, 3, 3, 5, 5, 5), nrow = 5)
+A
+```
+Macierz korelacji wygl¹da nastêpuj¹co:
+```{r}
+macierz_korelacji(A)
+```
+SprawdŸmy teraz poprawnoœæ funkcji.
+```{r}
+all.equal(cor(A,A), macierz_korelacji(A))
+```
+W tym przypadku równie¿ jest TRUE, wiêc metoda dzia³a prawid³owo.
+
+## Przyk³ad 3
+A co, gdy wszystkie elementy w pewnej kolumnie s¹ takie same?
+```{r}
+A <- matrix(c(16, 23, 3, 32, 46, 6, 4, 22, 16, 35, 3, 3, 5, 5, 5), nrow = 3)
+A
+```
+Macierz korelacji:
+```{r}
+macierz_korelacji(A)
+```
+Widaæ, ¿e na 5 wierszu i 5 kolumnie wszystkie elementy s¹ NaN.
+Spowodowane jest tym, ¿e wariancja 5 kolumny macierzy A jest równa 0, gdy¿ wszystkie elementy w 5 kolumnie s¹ równe.
+
+Porównajmy wyniki naszej funkcji z wynikami zwracanymi przez wbudowan¹ funkcjê cor.
+```{r}
+all.equal(cor(A,A), macierz_korelacji(A))
+```
+Po wywo³aniu powy¿szej komendy nie ma b³êdu, ale jest ostrze¿enie, które mówi, ¿e w cor(A,A) pojawia siê odchylenie standardowe równe zero. 
+Mimo wszystko zwracana jest wartoœæ TRUE, zatem i w takim przypadku dzia³anie naszej funkcji jest poprawne.
+
+Zatem metoda jest skuteczna.
+
+# Zadanie 2
+Dana funkcja zwraca dwuelementow¹ listê zawieraj¹c¹:
+1. wektor zawieraj¹cy œrednie 3 najmniejszych elementów ka¿dej kolumny,
+2. macierz rozmiaru (n - 1) x m zawieraj¹c¹ œrednie s¹siednich elementów w ka¿dej kolumnie, przy czym s¹siadem elementu A[i, j] jest element A[i + 1, j].
+
+Funkcja przyjmuje macierz M rozmiaru n x m (n > 3, m > 3).
+Najpierw tworzymy listê z dwóch pustych elementów.
+
+Tworz¹c pierwszy element, korzystamy z funkcji colMeans dla posortowanych kolumn. Jako pierwszy element listy bierzemy ca³y 1, 2, 3 wiersz macierzy otrzymanej z funkcji colMeans.
+
+Natomiast, tworz¹c drugi element listy, bierzemy macierz M1 bêd¹c¹ macierz¹ M z usuniêtym n-tym wierszem i macierz M2, która jest macierz¹ M z usuniêtym 1-szym wierszem. Jako drugi element listy bierzemy macierz 1/2 * (M1 + M2).
+```{r echo = FALSE}
+podsumowanie <- function(M)
+{
+  stopifnot(ncol(M) > 3 & nrow(M) > 3 & is.matrix(M) & is.numeric(M))
+  l <- list(NULL, NULL)
+  l[[1]] <- colMeans(apply(M, MARGIN = 2, sort)[seq(1,3), ])
+  n <- nrow(M)
+  M1 <- M[seq(1, n - 1), ]
+  M2 <- M[seq(2, n), ]
+  l[[2]] <- 1/2 * (M1 + M2)
+  l
+}
+```
+Sprawdzimy dzia³anie tej funkcji na paru przyk³adach.
+## Przyk³ad 1
+```{r}
+A <- matrix(c(16, 23, 3, 32, 46, 6, 4, 22, 16, 3, 532, 23, 234, 23, 234, 5346), nrow = 4)
+A
+```
+
+```{r}
+podsumowanie(A)
+```
+Widzimy, ¿e wynik jest prawid³owy.
+## Przyk³ad 2
+```{r}
+A <- matrix(c(16, 23, 3, 32, 46, 6, 4, 22, 16, 35, 3, 3, 5, 5, 5, 24, 22, 21, 20), nrow = 5)
+A
+```
+
+```{r}
+podsumowanie(A)
+```
+Tu metoda te¿ dzia³a poprawnie.
+## Przyk³ad 3
+```{r}
+A <- matrix(c(1050,1020, 1000, 800, 840, 820, 900, 920, 940, 900, 700, 550, 660, 210, 400, 10, 20, 22, 23, 24, 241, 231, 678, 638, 618), nrow = 5)
+A
+```
+
+```{r}
+podsumowanie(A)
+```
+Widaæ, ¿e tu wyniki s¹ tak¿e prawid³owe.
+
+St¹d dzia³anie naszej metody jest zadowalaj¹ce.
+
+# Zadanie 3
+Wiemy, ¿e:
+
+Talia kart liczy 52 sztuk. 
+W talii s¹ cztery kolory: pik, kier, karo, trefl.
+Ka¿dy z kolorów posiada 9 kart numerowanych: 2, 3, 4, 5, 6, 7, 8, 9, 10, 3 figury J, Q, K oraz Asa A.
+Gracz 1 ma na rêce 6 trefl i 1 J pik (wartoœæ 16).
+Gracz 2 ma 2 karty, jedna z nich to K trefl, druga zaœ nie jest widoczna.
+Teraz gracze maj¹ mo¿liwoœæ dobrania jeszcze jednej karty.
+Gracz 2 zdecyduje, ¿e nie dobiera wiêcej kart.
+
+Liczba rozgrywek wynosi 1000.
+
+Zauwa¿my, ¿e gracz 1 ma na rêce dok³adnie 6 Asów i J pik.
+Inne przypadki s¹ wykluczone, gdy¿ wartoœæ zbioru kart gracza 1 by³aby wiêksza od 16.
+
+## Przypadek 1: Gracz 1 nie wyci¹ga karty.
+
+### Gracz 2 ma dwójkê jako drug¹ kartê. 
+Wtedy gracz 1 wygra.
+
+### Gracz 2 ma trójkê jako drug¹ kartê.
+Gracz 1 wygra.
+
+### ...
+
+### Gracz 2 ma pi¹tkê jako drug¹ kartê.
+Gracz 1 wygra.
+
+### Gracz 2 ma szóstkê jako drug¹ kartê.
+Tym razem gracz 1 nie wygra, bo jest remis.
+
+### Gracz 2 ma siódemkê jako drug¹ kartê.
+Gracz 1 przegra, wiêc nie wygra.
+
+### ...
+
+### Gracz 2 ma dziesi¹tkê jako drug¹ kartê.
+Gracz 1 nie wygra.
+
+### Gracz 2 ma figurê J.
+Gracz 1 nie wygra.
+
+### ...
+
+### Gracz 2 ma figurê K.
+Gracz 1 nie wygra. 
+
+### Gracz 2 ma Asa.
+Gracz 1 nie wygra.
+
+Zatem jest 16 mo¿liwoœci na 44 sprzyjaj¹cych zdarzeniu, ¿e gracz 1 wygra.
+Mo¿emy oszacowaæ prawdopodobieñstwo wygrania gracza 1, losuj¹c 1000 razy liczby ze zbioru {1, 2, 3, ..., 44}. Wynikiem jest liczba wylosowanych elementów nie wiêkszych ni¿ 16. 
+
+Szacowane prawdopodobieñstwo liczymy za pomoc¹ nastêpuj¹cej komendy:
+```{r}
+n <- 1000
+x <- ceiling(runif(n, 0, 44))
+length(which(x <= 16)) / 1000
+```
+
+## Przypadek 2: Gracz 1 wyci¹ga kartê.
+
+### Gracz 1 wyci¹gn¹³ dwójkê.
+Wtedy ma 18 punktów.
+
+Jeœli gracz 2 jako drug¹ kartê ma dwójkê, trójkê, ... lub siódemkê, to gracz 1 wygrywa.
+
+Gdy gracz 2 jako drug¹ kartê ma ósemkê, dziewi¹tkê lub dziesi¹tkê, to gracz 1 nie wygrywa.
+
+Je¿eli gracz 2 jako drug¹ kartê ma figurê lub Asa, to te¿ gracz 1 nie wygrywa.
+
+Czyli jest (6 * 4 - 1) na 43 mo¿liwoœci, gdzie gracz 1 wygra.
+
+### Gracz 1 wyci¹gn¹³ trójkê.
+Wtedy ma 19 punktów. 
+
+Jest wtedy (7 * 4 - 1) na 43 mo¿liwoœci, gdzie gracz 1 wygra.
+
+### Gracz 1 wyci¹gn¹³ czwórkê.
+Wtedy ma 20 punktów.
+
+Jest wtedy (8 * 4 - 1) na 43 mo¿liwoœæi, gdzie gracz 1 wygra.
+
+### Gracz 1 wyci¹gn¹³ pi¹tkê.
+Wtedy ma 21 punktów.
+
+Jest wtedy (9 * 4 - 1  + 3 * 4 - 2) na 43 mo¿liwoœci, gdzie gracz 1 wygra.
+
+### Gracz 1 wyci¹gn¹³ szóstkê, siódemkê, ..., lub dziesi¹tkê.
+Gracz 1 nie wygra, bo ma co najmniej 22 > 21 punktów.
+
+### Gracz 1 wyci¹gn¹³ figurê.
+Gracz 1 ma 26 > 21 punktów, wiêc przegra grê, czyli jej nie wygra.
+
+### Gracz 1 wyci¹gn¹³ Asa.
+Gracz 1 ma 17 punktów.
+
+
+Jest (5 * 4 - 1) na 43 mo¿liwoœæi, gdzie gracz 1 wygra.
+
+A zatem szacowanym prawdopodobieñstwem jest œrednia prawdopodobieñstw wygrania gracza 1 z wszystkich przypadków wziêtej karty przez gracza 1.
+
+Liczymy je za pomoc¹ nastêpuj¹cego kodu:
+```{r}
+n <- 1000
+
+pr <- rep(0,13)
+
+x <- ceiling(runif(n, 0, 44))
+pr[1] <- length(which(x <= 23)) / 1000
+
+x <- ceiling(runif(n, 0, 44))
+pr[2] <- length(which(x <= 27)) / 1000
+
+x <- ceiling(runif(n, 0, 44))
+pr[3] <- length(which(x <= 31)) / 1000
+
+x <- ceiling(runif(n, 0, 44))
+pr[4] <- length(which(x <= 35)) / 1000
+
+x <- ceiling(runif(n, 0, 44))
+pr[5] <- length(which(x <= 0)) / 1000
+pr[6] <- length(which(x <= 0)) / 1000
+pr[7] <- length(which(x <= 0)) / 1000
+pr[8] <- length(which(x <= 0)) / 1000
+pr[9] <- length(which(x <= 0)) / 1000
+
+x <- ceiling(runif(n, 0, 44))
+pr[10] <- length(which(x <= 0)) / 1000
+pr[11] <- length(which(x <= 0)) / 1000
+pr[12] <- length(which(x <= 0)) / 1000
+
+x <- ceiling(runif(n, 0, 44))
+pr[13] <- length(which(x <= 19)) / 1000
+
+mean(pr)
+```
+
+# Zadanie 4
+Celem zadania jest stworzenie funkcji, która ma sprawdziæ na podstawie zbioru ucz¹cego, czy nowy, nieznany cz³owiek jest Anglikiem, czy Szkotem. W tym celu pos³u¿ymy siê naiwnym klasyfikatorem bayesowskim.
+
+```{r echo = FALSE}
+jakajestosoba <- function(osoba, narodowosc)
+{
+  (sum(osoba[c == narodowosc]) + 1) / (sum(length(osoba[c == narodowosc])) + 2)
+}
+
+naiwny_bayes <- function(X, c, z)
+{
+  # X jest macierz¹ zerojedynkow¹, c jest wektorem napisów, z jest wektorem zerojedynkowym.
+  # Liczba elementów wektora z ma byæ równa liczbie kolumn macierzy X, poniewa¿ z opisuje 5 cech cz³owieka.
+  # Z za³o¿enia c ma liczbê elementów równ¹ liczbie wierszy macierzy X.
+  stopifnot(is.matrix(X) & is.numeric(X) & is.character(c) & is.numeric(z) & ncol(X) == length(z) & nrow(X) == length(c))
+  
+  nAnglik <- length(which(c == 'Anglik')) # Liczba elementów 'Anglik' w wektorze c.
+  nSzkot <- length(which(c == 'Szkot')) # Liczba elementów 'Szkot' w wektorze c.
+  
+  n <- length(c)
+  
+  praprA <- nAnglik / n
+  praprSz <- nSzkot / n
+  
+  
+  naroducz <- c(praprA, praprSz)
+  names(naroducz) <- c('Anglik', 'Szkot')
+  
+  prwarAnglik <- apply(X, MARGIN = 2, function(os) jakajestosoba(os, 'Anglik'))
+  names(prwarAnglik) = c('x1 = ', 'x2 = ', 'x3 = ', 'x4 = ', 'x5 = ')
+  
+  prwarSzkot <- apply(X, MARGIN = 2, function(os) jakajestosoba(os, 'Szkot'))
+  names(prwarSzkot) <- c('x1 = ', 'x2 = ', 'x3 = ', 'x4 = ', 'x5 = ')
+  
+  os1 <- log(praprA) + sum(log(z * prwarAnglik + (1 - z) * (1 - prwarAnglik)))
+  os2 <- log(praprSz) + sum(log(z * prwarSzkot + (1 - z) * (1 - prwarSzkot)))
+  
+  if (os1 >= os2)
+  {
+    grupa <- 'Anglik'
+  }
+  else
+  {
+    grupa <- 'Szkot'
+  }
+  
+  podl <- list(naroducz, prwarAnglik, prwarSzkot)
+  names(podl) <- c('apriori', 'Anglik', 'Szkot')
+  
+  
+  klas <- list(podl, grupa)
+  names(klas) <- c('prob', 'group')
+  klas
+}
+```
+## Przyk³ad 1
+```{r}
+X <- matrix(c(1,0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0), c(3, 5))
+X
+c <- rep(c('Anglik', 'Szkot'), c(1, 2))
+c
+z <- c(1, 0, 1, 0, 1)
+naiwny_bayes(X, c, z)
+
+naiwny_bayes(X, c, c(0, 0, 1, 0, 1))$group
+```
+Przydzielenie nowego cz³owieka do narodowoœci przez nasz¹ funkcjê jest trafne, gdy¿, patrz¹c na macierz X, elementy wektora z bardziej pokrywaj¹ siê z cechami Szkotów.
+## Przyk³ad 2
+```{r}
+X <- structure(c(0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1,
+                 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0,
+                 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0,
+                 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1), .Dim = c(20L, 5L))
+X
+
+c <- rep(c('Anglik', 'Szkot'), c(11, 9))
+
+z <- c(1, 1, 0, 1, 0)
+naiwny_bayes(X, c, z)
+
+naiwny_bayes(X, c, c(0, 0, 1, 0, 1))$group
+```
+Zauwa¿my z powy¿szego przypadku, ¿e dany przydzia³ jest trafny.
+
+# Zadanie 5
+Funkcja pairs_bootstrap(x, y, M) ma obliczyæ 95-procentowy, dwustronny przedzia³ ufnoœci dla wspó³czynnika nachylenia w modelu regresji liniowej jednowymiarowej, gdzie jej argumentami s¹ wektory zawieraj¹ce wartoœci zmiennej objaœnianej y oraz zmiennej objaœniaj¹cej x, a tak¿e liczba powtórzeñ eksperymentu M.
+
+```{r echo = FALSE}
+pairs_bootstrap <- function(x, y, M)
+{
+  stopifnot(is.numeric(x) & is.numeric(y) & length(x) == length(y) & is.numeric(M) &  M >= 1)
+  
+  indeksy <- replicate(M, 1:length(x))
+  
+  probka_x <- x[indeksy]
+  probka_y <- y[indeksy]
+  
+  model <- lm(probka_y~probka_x)
+  c(quantile(model$coefficients[1], 0.95), quantile(model$coefficients[2], 0.95))
+}
+```
+Najpierw ze zbioru {1, ..., ostatni indeks wektora x} losujemy 1000 razy ze zwracaniem. PóŸniej próbk¹ z x jest zbiór wszystkich elementów wektora x o indeksach ze zbioru I, gdzie I jest wylosowanym wczeœniej zbiorem. Analogicznie jest w przypadku próbki y.
+
+Nastêpnie liczymy wspó³czynnik nachylenia dla spróbkowanych danych otrzymanych wczeœniej.
+
+## Przyk³ad 1
+```{r}
+x <- 1:15
+y <- 3 * 1:15 + rnorm(15,0,2) + 2
+
+model <- lm(y~x)
+przedzial <- pairs_bootstrap(x, y, 1000)
+print(paste0("(", round(przedzial[1], 2), ", ", round(przedzial[2], 2), ")"))
+
+plot(x, y, pch = 16, las = 1)
+curve(przedzial[1] * x + 2, col = "red", add = TRUE)
+curve(przedzial[2] * x + 2, col = "red", add = TRUE)
+```
+Widzimy, ¿e otrzymany przedzia³ ufnoœci niezbyt dok³adnie dopasowuje nachylenie do danych.
+## Przyk³ad 2
+```{r}
+x <- 1:25
+y <- 4 * 1:25 + rnorm(15,5,6) + 2
+
+model <- lm(y~x)
+przedzial <- pairs_bootstrap(x, y, 1000)
+print(paste0("(", round(przedzial[1], 2), ", ", round(przedzial[2], 2), ")"))
+
+plot(x, y, pch = 16, las = 1)
+curve(przedzial[1] * x + 2, col = "red", add = TRUE)
+curve(przedzial[2] * x + 2, col = "red", add = TRUE)
+```
+Tutaj równie¿ niezbyt dok³adne jest dopasowanie.
